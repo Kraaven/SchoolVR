@@ -1,399 +1,327 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Unity.Mathematics;
-using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
-using UnityEngine.UIElements;
+using Newtonsoft.Json;
+using TMPro;
+using UnityEngine.EventSystems;
 
 public class RecogniserManager : MonoBehaviour
 {
-    // Start is called before the first frame update
-
-    //    void Start()
-    //    {
-    //        QDollar Recog = new QDollar();
-
-    //        List<List<Vector2>> squareGesture = new List<List<Vector2>>
-    //{
-    //    // First stroke: Draw three sides of the square (starting from top-left, moving clockwise)
-    //    new List<Vector2>
-    //    {
-    //        new Vector2(0, 0),   // Top-left corner
-    //        new Vector2(100, 0), // Top-right corner
-    //        new Vector2(100, 100), // Bottom-right corner
-    //        new Vector2(0, 100)  // Bottom-left corner
-    //    },
-
-    //    // Second stroke: Complete the square by drawing the left side (bottom to top)
-    //          new List<Vector2>
-    //         {
-    //             new Vector2(0, 100), // Start at bottom-left corner
-    //             new Vector2(0, 0)    // End at top-left corner, closing the square
-    //            }
-    //        };
-
-
-    //        bool success = Recog.AddGesture("Square", squareGesture);
-
-    //        if (success)
-    //        {
-    //            print("Square gesture added successfully.");
-    //        }
-    //        else
-    //        {
-    //            print("Failed to add square gesture.");
-    //        }
-
-
-    //        List<List<Vector2>> circleGesture = new List<List<Vector2>>
-    //{
-    //    // First stroke: Draw the top half of the circle
-    //    new List<Vector2>
-    //    {
-    //        new Vector2(50, 0),    // Top point
-    //        new Vector2(75, 6.7f),
-    //        new Vector2(93.3f, 25),
-    //        new Vector2(100, 50),  // Right point
-    //        new Vector2(93.3f, 75),
-    //        new Vector2(75, 93.3f),
-    //        new Vector2(50, 100)   // Bottom point
-    //    },
-
-    //    // Second stroke: Complete the circle by drawing the bottom half
-    //    new List<Vector2>
-    //    {
-    //        new Vector2(50, 100),  // Bottom point
-    //        new Vector2(25, 93.3f),
-    //        new Vector2(6.7f, 75),
-    //        new Vector2(0, 50),    // Left point
-    //        new Vector2(6.7f, 25),
-    //        new Vector2(25, 6.7f),
-    //        new Vector2(50, 0)     // Back to top point, closing the circle
-    //    }
-    //};
-
-    //        // Add the circle gesture to the recognizer
-    //        bool successc = Recog.AddGesture("Circle", circleGesture);
-
-    //        if (successc)
-    //        {
-    //            print("Circle gesture added successfully.");
-    //        }
-    //        else
-    //        {
-    //            print("Failed to add circle gesture.");
-    //        }
-
-
-    //        for (int j  = 0;   j < 12; j++)
-    //        {
-    //            //Recog.PrintStoredGestures();
-
-    //            List<List<Vector2>> squareGesture2 = new List<List<Vector2>>
-    //{
-    //    // First stroke: Draw three sides of the square (starting from top-left, moving clockwise)
-    //    new List<Vector2>
-    //    {
-    //        new Vector2(0, 0),   // Top-left corner
-    //        new Vector2(100, 0), // Top-right corner
-    //        new Vector2(100, 100), // Bottom-right corner
-    //        new Vector2(0, 100)  // Bottom-left corner
-    //    },
-
-    //    // Second stroke: Complete the square by drawing the left side (bottom to top)
-    //          new List<Vector2>
-    //         {
-    //             new Vector2(0, 100), // Start at bottom-left corner
-    //             new Vector2(0, 0)    // End at top-left corner, closing the square
-    //            }
-    //        };
-
-
-    //            for (int i = 0; i < squareGesture2[0].Count; i++)
-    //            {
-    //                squareGesture2[0][i] = new Vector2(squareGesture2[0][i].x + UnityEngine.Random.Range(-5, 50), squareGesture2[0][i].y + UnityEngine.Random.Range(-50, 50));
-    //                //print(squareGesture2[0][i]);
-    //            }
-
-    //            var test = Recog.Recognize(squareGesture2);
-    //            print($"{test.Name}, with deviation score {test.Score}");
-    //        }
-
-    //}
-
+    [Header("Drawing State")]
     public bool drawing;
-    public List<Vector3> Points;
-    public Transform Cursor;
-    public InputActionReference InputAction;
-    public List<List<Vector2>> Gesture;
-    public string GestureName;
-    public List<string> Gestures;
-    private QDollar Recogniser;
-    int PINDEX = 0;
-    public void Awake()
+    public List<Vector3> currentStroke;
+    private List<GameObject> DrawnLines;
+    [Header("References")]
+    public Transform cursor;
+    public InputActionReference inputAction;
+    public GameObject Label;
+    public ModelArchive Archive;
+    public List<List<Vector3>> currentGesture3D;
+    [Header("Gesture Settings & loader")]
+    public string newGestureName;
+    public List<string> gestureNames;
+    private QDollar recogniser;
+    //[Header("Buttons")]
+
+    public Vector3 Centroid;
+    public String DrawingName;
+    
+
+    private void Awake()
     {
-        Gesture = new List<List<Vector2>>();   
-        
-        Recogniser = new QDollar();
+        // Initialize lists
+        currentGesture3D = new List<List<Vector3>>();
+        currentStroke = new List<Vector3>();
+        DrawnLines = new List<GameObject>();
 
-        foreach (var name in Gestures) { 
-            var G = Newtonsoft.Json.JsonConvert.DeserializeObject<(string, List<List<Vector2>>)>(File.ReadAllText(Path.Combine(Application.dataPath, "Gestures", name + ".json")));
-            Recogniser.AddGesture(G.Item1, G.Item2);
-            print($"Added {G.Item1}");
-        }
-        
-        var Gest = Newtonsoft.Json.JsonConvert.DeserializeObject<(string, List<List<Vector2>>)>(File.ReadAllText(Path.Combine(Application.dataPath, "Gestures", "Tree.json")));
-        
-        foreach (var stroke in Gest.Item2)
+        // Initialize the recogniser
+        recogniser = new QDollar();
+        Label.SetActive(false);
+
+        // Load all gestures
+        LoadGestures();
+    }
+
+    private void LoadGestures()
+    {
+        foreach (var name in gestureNames)
         {
+            string filePath = Path.Combine(Application.dataPath, "Gestures", name + ".json");
+            if (File.Exists(filePath))
+            {
+                string jsonContent = File.ReadAllText(filePath);
+                var gestureData = JsonConvert.DeserializeObject<(string, List<List<Vector2>>)>(jsonContent);
+                recogniser.AddGesture(gestureData.Item1, gestureData.Item2);
+                Debug.Log($"Loaded gesture: {gestureData.Item1}");
 
-            LineRenderer line = new GameObject("Shape", new[] { typeof(LineRenderer) }).GetComponent<LineRenderer>();
-
-            var PTS = Vec2ToVec3(stroke.ToArray());
-            line.positionCount = stroke.Count;
-            line.SetPositions(PTS.ToArray());
-            line.endColor = line.startColor = Color.white;
-            line.startWidth = 0.05f;
-            line.endWidth = 0.05f;
-
+                // foreach (var stroke in gestureData.Item2)
+                // {
+                //     DrawStroke(Vec2ToVec3(stroke.ToArray()).ToList());
+                // }
+            }
+            else
+            {
+                Debug.LogWarning($"Gesture file not found: {filePath}");
+            }
         }
-
-
     }
 
     private void Update()
     {
-        if (InputAction.action.WasPressedThisFrame() || Input.GetKeyDown(KeyCode.P))
+        HandleInput();
+        MoveCursor();
+    }
+
+    private void HandleInput()
+    {
+        if (EventSystem.current.IsPointerOverGameObject())
         {
-
-            if (drawing) {
-               LineRenderer line =  new GameObject("Shape", new[] { typeof(LineRenderer) }).GetComponent<LineRenderer>();
-               
-                line.positionCount = Points.Count;
-                line.SetPositions(Points.ToArray());
-                line.endColor = line.startColor = Color.white;
-                line.startWidth = 0.05f;
-                line.endWidth = 0.05f;
-               
-
-
-
-
-                var newP = Vector3Projection(Points);
-                var obj = new GameObject("Shape2", new[] { typeof(LineRenderer) });
-                LineRenderer line2 = obj.GetComponent<LineRenderer>();
-
-                line2.positionCount = newP.Length;
-                line2.SetPositions(Vec2ToVec3(newP));
-                line2.endColor = line2.startColor = Color.white;
-                line2.startWidth = line2.endWidth = 0.1f;
-
-                Gesture.Add(newP.ToList());
-
+            // If over a UI element, don't process drawing input
+            return;
+        }
+        
+        if (inputAction.action.WasPressedThisFrame() || Input.GetKeyDown(KeyCode.P))
+        {
+            if (drawing)
+            {
+                FinishStroke();
+                RecognizeGesture();
             }
             else
             {
-                Points  = new List<Vector3>();
-                Points.Add(Cursor.position);
-                PINDEX = 0;
+                StartNewStroke();
+                Label.SetActive(false);
             }
             drawing = !drawing;
         }
 
-        if (Input.GetKey(KeyCode.W))
+        if (drawing)
         {
-            Cursor.Translate(new Vector3(0, 0.05f, 0));
+            ContinueStroke();
         }
-        if (Input.GetKey(KeyCode.S))
-        {
-            Cursor.Translate(new Vector3(0, -0.05f, 0));
-        }
-        if (Input.GetKey(KeyCode.A))
-        {
-            Cursor.Translate(new Vector3(-0.05f, 0, 0));
-        }
-        if (Input.GetKey(KeyCode.D))
-        {
-            Cursor.Translate(new Vector3(0.05f, 0, 0));
-        }
-        if (Input.GetKey(KeyCode.UpArrow))
-        {
-            Cursor.Translate(new Vector3(0, 0, 0.05f));
-        }
-        if (Input.GetKey(KeyCode.DownArrow))
-        {
-            Cursor.Translate(new Vector3(0, 0, -0.05f));
-        }
-        //Cursor.Translate(0, 0, UnityEngine.Random.Range(-0.5f, 0.7f));
-
-        //if (Input.GetKeyDown(KeyCode.Space))
-        //{
-        //    Directory.CreateDirectory(Path.Combine(Application.dataPath, "Gestures"));
-
-        //    var path = Path.Combine(Application.dataPath, "Gestures", GestureName + ".json");
-        //    File.WriteAllText(path, Newtonsoft.Json.JsonConvert.SerializeObject((GestureName, Gesture)));
-        //}
 
         if (Input.GetKeyDown(KeyCode.Space))
         {
-            var R = Recogniser.Recognize(Gesture);
-
-            print(R.Name);
+            RecognizeGesture();
         }
-
-        if (drawing)
+        if (Input.GetKeyDown(KeyCode.S))
         {
+            SaveGesture();
+        }
+    }
 
-            if (Vector3.Distance(Points.Last(), Cursor.position) > 0.02f) {
-                print($"Added Point {PINDEX}");
-                PINDEX++;
-                Points.Add(Cursor.position);
-            }
-           
+    private void StartNewStroke()
+    {
+        currentStroke = new List<Vector3> { cursor.position };
+    }
 
-            //Points.Add(new Vector3(UnityEngine.Random.Range(-10,10), UnityEngine.Random.Range(-5, 5), UnityEngine.Random.Range(-10, 10)));
+    private void ContinueStroke()
+    {
+        if (Vector3.Distance(currentStroke[currentStroke.Count - 1], cursor.position) > 0.02f)
+        {
+            currentStroke.Add(cursor.position);
+        }
+    }
 
-            // Points.Add(Camera.main.ScreenToWorldPoint(Input.mousePosition));
-            //print(Points.Last());
-            //print(Camera.main.ScreenToWorldPoint(Input.mousePosition));
-            //Cursor.position = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+    private void FinishStroke()
+    {
+        DrawStroke(currentStroke);
+        currentGesture3D.Add(new List<Vector3>(currentStroke));
+        currentStroke.Clear();
+    }
+
+    private void DrawStroke(List<Vector3> stroke)
+    {
+        if (stroke == null || stroke.Count == 0)
+        {
+            Debug.LogWarning("Stroke list is null or empty.");
+            return;
         }
 
+        GameObject lineObj = new GameObject("Stroke");
+        LineRenderer line = lineObj.AddComponent<LineRenderer>();
+
+        // Set line renderer properties
+        line.positionCount = stroke.Count;
+        line.SetPositions(stroke.ToArray());
+        line.startColor = Color.white;
+        line.endColor = Color.white;
+        line.startWidth = 0.01f;
+        line.endWidth = 0.01f;
+
+        // Set line renderer material and other properties
+        line.material = new Material(Shader.Find("Unlit/Color")); // Use an unlit shader for simple color
+        line.widthMultiplier = 1.0f; // Optional: scale width uniformly
+
+        // Optional: configure alignment and other settings
+        line.alignment = LineAlignment.TransformZ; // Aligns line segments based on transform's Z axis
+        line.useWorldSpace = false; // Set to true if you want the line to be in world space
+
+        // Optional: add a collider or other components if needed
+        // lineObj.AddComponent<Collider>();
+        
+        DrawnLines.Add(lineObj);
+    }
+
+
+    private void RecognizeGesture()
+    {
+        var DisplayMSG = "Import: ";
+        if (currentGesture3D.Count > 0)
+        {
+            // Project the entire 3D multi-stroke gesture to 2D
+            Vector2[] projectedPoints = Projection(currentGesture3D);
+
+            // Convert the projected points back into a List<List<Vector2>> format
+            List<List<Vector2>> gesture2D = new List<List<Vector2>>();
+            int currentIndex = 0;
+            foreach (var stroke in currentGesture3D)
+            {
+                List<Vector2> projectedStroke = new List<Vector2>();
+                for (int i = 0; i < stroke.Count; i++)
+                {
+                    projectedStroke.Add(projectedPoints[currentIndex]);
+                    currentIndex++;
+                }
+                gesture2D.Add(projectedStroke);
+            }
+
+            // Recognize the projected 2D gesture
+            var result = recogniser.Recognize(gesture2D);
+            Debug.Log($"Recognized gesture: {result.Name} with score: {result.Score}");
+            Label.transform.GetChild(0).GetChild(0).gameObject.GetComponent<TMP_Text>().text = DisplayMSG + result.Name;
+            Centroid = CalculateCentroid(currentGesture3D);
+            DrawingName = result.Name.ToString();
+            Label.transform.position = Centroid;
+            Label.transform.LookAt(Camera.main.transform);
+            Label.transform.Rotate(0,180,0);
+            Label.SetActive(true);
+            
+            // Clear the current gesture after recognition
+            // currentGesture3D.Clear();
+        }
+        else
+        {
+            Debug.Log("No gesture to recognize");
+        }
+    }
+
+    private void MoveCursor()
+         {
+             float moveSpeed = 0.05f;
+             if (Input.GetKey(KeyCode.W)) cursor.Translate(Vector3.up * moveSpeed);
+             if (Input.GetKey(KeyCode.S)) cursor.Translate(Vector3.down * moveSpeed);
+             if (Input.GetKey(KeyCode.A)) cursor.Translate(Vector3.left * moveSpeed);
+             if (Input.GetKey(KeyCode.D)) cursor.Translate(Vector3.right * moveSpeed);
+             if (Input.GetKey(KeyCode.UpArrow)) cursor.Translate(Vector3.forward * moveSpeed);
+             if (Input.GetKey(KeyCode.DownArrow)) cursor.Translate(Vector3.back * moveSpeed);
          }
-    //public static List<Vector2> Convert3DTo2D(List<Vector3> points3D)
-    //{
-    //    // Convert to array for easier manipulation
-    //    Vector3[] pointsArray = points3D.ToArray();
+    
+    public static Vector2[] Projection(List<List<Vector3>> MultipointCloud)
+    {
+        if (MultipointCloud == null || MultipointCloud.Count == 0)
+            return Array.Empty<Vector2>();
 
-    //    // Center the points
-    //    Vector3 centroid = GetCentroid(pointsArray);
-    //    for (int i = 0; i < pointsArray.Length; i++)
-    //    {
-    //        pointsArray[i] -= centroid;
-    //    }
+        // Get the camera's forward direction and round it to the nearest 15 degrees
+        Vector3 cameraForward = RoundToNearest15Degrees(Camera.main.transform.forward);
 
-    //    // Perform PCA
-    //    Matrix4x4 covarianceMatrix = GetCovarianceMatrix(pointsArray);
-    //    Vector3 principalAxis = GetPrincipalAxis(covarianceMatrix);
+        // Create a projection plane perpendicular to the camera direction
+        Plane projectionPlane = new Plane(-cameraForward, Vector3.zero);
 
-    //    // Project points onto the plane perpendicular to the principal axis
-    //    Vector3 xAxis = Vector3.Cross(principalAxis, Vector3.up).normalized;
-    //    Vector3 yAxis = Vector3.Cross(principalAxis, xAxis).normalized;
+        // Flatten the multipoint cloud into a single list
+        List<Vector3> allPoints = MultipointCloud.SelectMany(stroke => stroke).ToList();
 
-    //    List<Vector2> points2D = new List<Vector2>();
-    //    foreach (Vector3 point in pointsArray)
-    //    {
-    //        float x = Vector3.Dot(point, xAxis);
-    //        float y = Vector3.Dot(point, yAxis);
-    //        points2D.Add(new Vector2(x, y));
-    //    }
+        // Project all points onto the plane
+        Vector2[] projectedPoints = new Vector2[allPoints.Count];
 
-    //    // Normalize
-    //    Vector2 centroid2D = GetCentroid2D(points2D);
-    //    float scale = points2D.Max(p => Mathf.Max(Mathf.Abs(p.x - centroid2D.x), Mathf.Abs(p.y - centroid2D.y)));
+        for (int i = 0; i < allPoints.Count; i++)
+        {
+            projectedPoints[i] = ProjectPointOntoPlane(allPoints[i], projectionPlane, cameraForward);
+        }
 
-    //    for (int i = 0; i < points2D.Count; i++)
-    //    {
-    //        points2D[i] = (points2D[i] - centroid2D) / scale;
-    //    }
+        return projectedPoints;
+    }
 
-    //    // Rotate to align with x-axis
-    //    float angle = Mathf.Atan2(points2D[0].y, points2D[0].x);
-    //    for (int i = 0; i < points2D.Count; i++)
-    //    {
-    //        points2D[i] = RotatePoint(points2D[i], -angle);
-    //    }
+    private static Vector3 RoundToNearest15Degrees(Vector3 direction)
+    {
+        float x = Mathf.Round(direction.x / 0.2588f) * 0.2588f; // 0.2588 ≈ sin(15°)
+        float y = Mathf.Round(direction.y / 0.2588f) * 0.2588f;
+        float z = Mathf.Round(direction.z / 0.2588f) * 0.2588f;
+        return new Vector3(x, y, z).normalized;
+    }
 
-    //    // Ensure consistent direction
-    //    if (points2D.Count(p => p.x > 0) < points2D.Count / 2)
-    //    {
-    //        for (int i = 0; i < points2D.Count; i++)
-    //        {
-    //            points2D[i] = new Vector2(-points2D[i].x, points2D[i].y);
-    //        }
-    //    }
+    private static Vector2 ProjectPointOntoPlane(Vector3 point, Plane plane, Vector3 cameraForward)
+    {
+        // Project the point onto the plane
+        Vector3 projectedPoint = point - plane.GetDistanceToPoint(point) * plane.normal;
 
-    //    return points2D;
-    //}
+        // Create a coordinate system on the plane
+        Vector3 right = Vector3.Cross(Vector3.up, cameraForward).normalized;
+        Vector3 up = Vector3.Cross(cameraForward, right).normalized;
 
-    //private static Vector3 GetCentroid(Vector3[] points)
-    //{
-    //    Vector3 sum = Vector3.zero;
-    //    foreach (Vector3 point in points)
-    //    {
-    //        sum += point;
-    //    }
-    //    return sum / points.Length;
-    //}
+        // Convert the projected point to 2D coordinates
+        float x = Vector3.Dot(projectedPoint, right);
+        float y = Vector3.Dot(projectedPoint, up);
 
-    //private static Vector2 GetCentroid2D(List<Vector2> points)
-    //{
-    //    Vector2 sum = Vector2.zero;
-    //    foreach (Vector2 point in points)
-    //    {
-    //        sum += point;
-    //    }
-    //    return sum / points.Count;
-    //}
+        return new Vector2(x, y);
+    }
+    
+    private void SaveGesture()
+    {
+        if (currentGesture3D.Count > 0 && !string.IsNullOrEmpty(newGestureName))
+        {
+            // Project the entire 3D multi-stroke gesture to 2D
+            Vector2[] projectedPoints = Projection(currentGesture3D);
 
-    //private static Matrix4x4 GetCovarianceMatrix(Vector3[] points)
-    //{
-    //    Matrix4x4 covarianceMatrix = Matrix4x4.zero;
-    //    int n = points.Length;
+            // Convert the projected points back into a List<List<Vector2>> format
+            List<List<Vector2>> gesture2D = new List<List<Vector2>>();
+            int currentIndex = 0;
+            foreach (var stroke in currentGesture3D)
+            {
+                List<Vector2> projectedStroke = new List<Vector2>();
+                for (int i = 0; i < stroke.Count; i++)
+                {
+                    projectedStroke.Add(projectedPoints[currentIndex]);
+                    currentIndex++;
+                }
+                gesture2D.Add(projectedStroke);
+            }
 
-    //    for (int i = 0; i < n; i++)
-    //    {
-    //        covarianceMatrix[0, 0] += points[i].x * points[i].x;
-    //        covarianceMatrix[0, 1] += points[i].x * points[i].y;
-    //        covarianceMatrix[0, 2] += points[i].x * points[i].z;
-    //        covarianceMatrix[1, 1] += points[i].y * points[i].y;
-    //        covarianceMatrix[1, 2] += points[i].y * points[i].z;
-    //        covarianceMatrix[2, 2] += points[i].z * points[i].z;
-    //    }
+            // Create a tuple with the gesture name and the 2D gesture data
+            var gestureData = (newGestureName, gesture2D);
 
-    //    covarianceMatrix[1, 0] = covarianceMatrix[0, 1];
-    //    covarianceMatrix[2, 0] = covarianceMatrix[0, 2];
-    //    covarianceMatrix[2, 1] = covarianceMatrix[1, 2];
+            // Convert the gesture data to JSON
+            string jsonData = JsonConvert.SerializeObject(gestureData);
 
-    //    for (int i = 0; i < 3; i++)
-    //    {
-    //        for (int j = 0; j < 3; j++)
-    //        {
-    //            covarianceMatrix[i, j] /= n;
-    //        }
-    //    }
+            // Create the Gestures directory if it doesn't exist
+            string gesturesDir = Path.Combine(Application.dataPath, "Gestures");
+            if (!Directory.Exists(gesturesDir))
+            {
+                Directory.CreateDirectory(gesturesDir);
+            }
 
-    //    return covarianceMatrix;
-    //}
+            // Save the JSON data to a file
+            string filePath = Path.Combine(gesturesDir, newGestureName + ".json");
+            File.WriteAllText(filePath, jsonData);
 
-    //private static Vector3 GetPrincipalAxis(Matrix4x4 covarianceMatrix)
-    //{
-    //    // This is a simplification. For more accurate results, you should use a proper eigenvalue decomposition.
-    //    // Unity doesn't provide this out of the box, so you might need to implement it or use a third-party math library.
-    //    Vector3 eigenVector = new Vector3(
-    //        covarianceMatrix[0, 0],
-    //        covarianceMatrix[1, 0],
-    //        covarianceMatrix[2, 0]
-    //    ).normalized;
+            // Add the new gesture to the recognizer
+            recogniser.AddGesture(newGestureName, gesture2D);
 
-    //    return eigenVector;
-    //}
+            Debug.Log($"Gesture '{newGestureName}' saved successfully.");
 
-    //private static Vector2 RotatePoint(Vector2 point, float angle)
-    //{
-    //    float cos = Mathf.Cos(angle);
-    //    float sin = Mathf.Sin(angle);
-    //    return new Vector2(
-    //        point.x * cos - point.y * sin,
-    //        point.x * sin + point.y * cos
-    //    );
-    //}
-
-
+            // Clear the current gesture and reset the name
+            currentGesture3D.Clear();
+            newGestureName = "";
+        }
+        else
+        {
+            Debug.LogWarning("Cannot save gesture: Either no gesture drawn or no name provided.");
+        }
+    }
+    
     public static Vector3[] Vec2ToVec3(Vector2[] Points)
     {
 
@@ -406,39 +334,70 @@ public class RecogniserManager : MonoBehaviour
 
         return Ps;
     }
-    public static Vector2[] Vector3Projection(List<Vector3> pointCloud)
+    
+    public Vector3 CalculateCentroid(List<List<Vector3>> pointCloud)
     {
+        // Validate input
         if (pointCloud == null || pointCloud.Count == 0)
         {
-            return new Vector2[0];
+            Debug.LogWarning("Point cloud is null or empty.");
+            return Vector3.zero;
         }
 
-        // Calculate the centroid of the point cloud
-        Vector3 centroid = pointCloud.Aggregate(Vector3.zero, (acc, p) => acc + p) / pointCloud.Count;
+        // Initialize variables for summing up the positions
+        Vector3 sum = Vector3.zero;
+        int totalPoints = 0;
 
-        Vector3 cameraForward = Camera.main.transform.forward;
-        Vector2[] projectedPoints = new Vector2[pointCloud.Count];
-
-        // Create a projection plane passing through the centroid and perpendicular to the camera's forward direction
-        Plane projectionPlane = new Plane(cameraForward, centroid);
-
-        for (int i = 0; i < pointCloud.Count; i++)
+        // Iterate through each list in the point cloud
+        foreach (var pointList in pointCloud)
         {
-            Vector3 pointToProject = pointCloud[i];
+            if (pointList == null || pointList.Count == 0)
+            {
+                continue; // Skip empty lists
+            }
 
-            // Project the point onto the plane
-            Ray ray = new Ray(Camera.main.transform.position, pointToProject - Camera.main.transform.position);
-            float enter;
-            projectionPlane.Raycast(ray, out enter);
-            Vector3 projectedPoint = ray.GetPoint(enter);
-
-            // Convert the projected point to the camera's local space
-            Vector3 localProjectedPoint = Camera.main.transform.InverseTransformPoint(projectedPoint);
-
-            // Store only the X and Y components as Vector2
-            projectedPoints[i] = new Vector2(localProjectedPoint.x, localProjectedPoint.y);
+            // Sum up the positions
+            foreach (var point in pointList)
+            {
+                sum += point;
+                totalPoints++;
+            }
         }
 
-        return projectedPoints;
+        // Check if there are any points to avoid division by zero
+        if (totalPoints == 0)
+        {
+            Debug.LogWarning("No valid points found in the point cloud.");
+            return Vector3.zero;
+        }
+
+        // Calculate and return the centroid
+        return sum / totalPoints;
     }
+
+    public void DeleteGesture()
+    {
+        currentGesture3D.Clear();
+        currentStroke.Clear();
+
+        foreach (var line in DrawnLines)
+        {
+            Destroy(line);
+        }
+        
+        DrawnLines.Clear();
+        Label.SetActive(false);
+    }
+
+    public void ManifestObject()
+    {
+        print($"Manifesting {DrawingName}");
+        Archive.CreateModel(DrawingName,Centroid);
+        DeleteGesture();
+        Label.SetActive(false);
+    }
+
+
+
+
 }
