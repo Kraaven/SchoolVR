@@ -63,7 +63,7 @@ public class PlayerNetwork : NetworkBehaviour
     [ServerRpc]
     private void DestroyObjectFromClientSideServerRpc()
     {
-        Destroy(spawnObjectTransform);
+        Destroy(spawnObjectTransform.gameObject);
         spawnObjectTransform.GetComponent<NetworkObject>().Despawn(true);
     }
 }
