@@ -1523,6 +1523,16 @@ PrefabInstance:
     serializedVersion: 3
     m_TransformParent: {fileID: 0}
     m_Modifications:
+    - target: {fileID: 462044229387631229, guid: 866c199571de3614bb8b9391477baeed,
+        type: 3}
+      propertyPath: ConnectionData.Port
+      value: 7777
+      objectReference: {fileID: 0}
+    - target: {fileID: 462044229387631229, guid: 866c199571de3614bb8b9391477baeed,
+        type: 3}
+      propertyPath: ConnectionData.ServerListenAddress
+      value: 0.0.0.0
+      objectReference: {fileID: 0}
     - target: {fileID: 1794657947774185432, guid: 866c199571de3614bb8b9391477baeed,
         type: 3}
       propertyPath: m_LocalPosition.x
