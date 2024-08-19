@@ -12,7 +12,7 @@ PlayerSettings:
   targetDevice: 2
   useOnDemandResources: 0
   accelerometerFrequency: 60
-  companyName: DefaultCompany
+  companyName: Nevermind
   productName: SchoolVR
   defaultCursor: {fileID: 0}
   cursorHotspot: {x: 0, y: 0}
@@ -103,7 +103,7 @@ PlayerSettings:
   xboxEnableFitness: 0
   visibleInBackground: 1
   allowFullscreenSwitch: 1
-  fullscreenMode: 1
+  fullscreenMode: 3
   xboxSpeechDB: 0
   xboxEnableHeadOrientation: 0
   xboxEnableGuest: 0
@@ -140,7 +140,9 @@ PlayerSettings:
   visionOSBundleVersion: 1.0
   tvOSBundleVersion: 1.0
   bundleVersion: 0.1.0
-  preloadedAssets: []
+  preloadedAssets:
+  - {fileID: -1311837396994990842, guid: 8aa36c4800c0b564ba4d1f816ccf7115, type: 2}
+  - {fileID: 6030413954980038927, guid: 7bdfd08ce06a642e793fccbf70f44791, type: 2}
   metroInputSource: 0
   wsaTransparentSwapchain: 0
   m_HolographicPauseOnTrackingLoss: 1
@@ -816,7 +818,8 @@ PlayerSettings:
     Android: 1
     Standalone: 1
   il2cppCompilerConfiguration: {}
-  il2cppCodeGeneration: {}
+  il2cppCodeGeneration:
+    Standalone: 0
   managedStrippingLevel:
     EmbeddedLinux: 1
     GameCoreScarlett: 1

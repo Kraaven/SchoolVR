@@ -396,8 +396,4 @@ public class RecogniserManager : MonoBehaviour
         DeleteGesture();
         Label.SetActive(false);
     }
-
-
-
-
 }

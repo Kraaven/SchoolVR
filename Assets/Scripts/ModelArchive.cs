@@ -20,7 +20,6 @@ public class ModelArchive : MonoBehaviour
                 var interact = obj.AddComponent<XRGrabInteractable>();
                 interact.throwOnDetach = false;
                 interact.useDynamicAttach = true;
-
             }
         }
     }
