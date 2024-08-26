@@ -7,6 +7,7 @@ using UnityEngine.InputSystem;
 using Newtonsoft.Json;
 using TMPro;
 using UnityEngine.EventSystems;
+using Random = UnityEngine.Random;
 
 public class RecogniserManager : MonoBehaviour
 {
@@ -43,6 +44,37 @@ public class RecogniserManager : MonoBehaviour
 
         // Load all gestures
         LoadGestures();
+
+        
+
+        // //Tests
+        //
+        // // Create a sample List<List<Vector2>>
+        // List<List<Vector2>> strokeList = new List<List<Vector2>>();
+        // for (int i = 0; i < Random.Range(2, 6); i++)
+        // {
+        //     List<Vector2> testList = new List<Vector2>();
+        //     for (int j = 0; j < 10; j++)
+        //     {
+        //         testList.Add(new Vector2(Random.Range(0, 300), Random.Range(0, 300)));
+        //     }
+        //     strokeList.Add(testList);
+        // }
+        //
+        // // Convert List<List<Vector2>> to JSON
+        // string json = JsonHelper.ToJson(("Dhruv",strokeList));
+        // Debug.Log("Serialized JSON: " + json);
+        //
+        // // Convert JSON back to List<List<Vector2>>
+        // (string, List<List<Vector2>>) deserializedStrokeList = JsonHelper.FromJson(json);
+        // Debug.Log("Deserialized List: " + deserializedStrokeList.Item2.Count + " outer lists");
+        //
+        // foreach (var list in deserializedStrokeList.Item2)
+        // {
+        //     Debug.Log("Inner List: " + list.Count + " Vector2 elements");
+        // }
+        //
+        // //Tests
     }
 
     private void LoadGestures()
@@ -53,14 +85,11 @@ public class RecogniserManager : MonoBehaviour
             if (File.Exists(filePath))
             {
                 string jsonContent = File.ReadAllText(filePath);
-                var gestureData = JsonConvert.DeserializeObject<(string, List<List<Vector2>>)>(jsonContent);
+                var gestureData = JsonHelper.FromJson(jsonContent);
+                
+                
                 recogniser.AddGesture(gestureData.Item1, gestureData.Item2);
                 Debug.Log($"Loaded gesture: {gestureData.Item1}");
-
-                // foreach (var stroke in gestureData.Item2)
-                // {
-                //     DrawStroke(Vec2ToVec3(stroke.ToArray()).ToList());
-                // }
             }
             else
             {
@@ -291,10 +320,10 @@ public class RecogniserManager : MonoBehaviour
             }
 
             // Create a tuple with the gesture name and the 2D gesture data
-            var gestureData = (newGestureName, gesture2D);
+            (string, List<List<Vector2>>) gestureData = (newGestureName, gesture2D);
 
             // Convert the gesture data to JSON
-            string jsonData = JsonConvert.SerializeObject(gestureData);
+            string jsonData = JsonHelper.ToJson(gestureData);
 
             // Create the Gestures directory if it doesn't exist
             string gesturesDir = Path.Combine(Application.dataPath, "Gestures");

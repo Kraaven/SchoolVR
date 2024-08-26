@@ -1,9 +1,11 @@
+using System;
 using Unity.Collections;
 using Unity.Jobs;
 using Unity.Mathematics;
 using Unity.Burst;
 using System.Collections.Generic;
 using System.Linq;
+using Newtonsoft.Json;
 using UnityEngine;
 
 public class QDollar
@@ -696,4 +698,52 @@ public class QDollar
     //        this.y = y;
     //    }
     //}
+}
+
+
+[Serializable]
+public class Vector2Serializable
+{
+    public float x;
+    public float y;
+
+    public Vector2Serializable(Vector2 vector)
+    {
+        x = vector.x;
+        y = vector.y;
+    }
+
+    public Vector2 ToVector2()
+    {
+        return new Vector2(x, y);
+    }
+}
+
+[Serializable]
+public class TupleData
+{
+    public string Item1;
+    public List<List<Vector2Serializable>> Item2;
+
+    public TupleData(string item1, List<List<Vector2>> item2)
+    {
+        Item1 = item1;
+        Item2 = item2.ConvertAll(list => list.ConvertAll(v => new Vector2Serializable(v)));
+    }
+}
+
+public static class JsonHelper
+{
+    public static string ToJson((string, List<List<Vector2>>) data)
+    {
+        var tupleData = new TupleData(data.Item1, data.Item2);
+        return JsonConvert.SerializeObject(tupleData);
+    }
+
+    public static (string, List<List<Vector2>>) FromJson(string jsonData)
+    {
+        var tupleData = JsonConvert.DeserializeObject<TupleData>(jsonData);
+        var item2 = tupleData.Item2.ConvertAll(list => list.ConvertAll(v => v.ToVector2()));
+        return (tupleData.Item1, item2);
+    }
 }
